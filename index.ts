@@ -6,8 +6,10 @@ import logger from 'koa-logger';
 import './database'; // 1. 引入並直接觸發 SQLite 初始化
 import movieRouter from './movies';
 import authRouter from './auth'; // 引入 Auth 路由
+import cors from '@koa/cors';
 
 const app = new Koa();
+app.use(cors());
 const router = new Router();
 
 app.use(logger());

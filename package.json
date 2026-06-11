@@ -21,6 +21,7 @@
   },
   "homepage": "https://github.com/ellawong0308/CinemaVault-Backend#readme",
   "dependencies": {
+    "@koa/cors": "^5.0.0",
     "bcrypt": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
     "knex": "^3.2.10",

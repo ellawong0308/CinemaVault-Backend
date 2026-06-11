@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",                  /* 學校 Lab 採用的標準現代 JS 版本 */
+    "module": "commonjs",                /* 關鍵：確保 ts-node-dev 和 Koa 的模組能順利運行，不會報 Modules 錯誤 */
+    "lib": ["ES2022"],                   
+    "allowJs": true,                     
+    "outDir": "./dist",                  /* 告訴編譯器最後打包的 JS 檔案放在 dist 資料夾 */
+    "rootDir": "./",                     /* 你的專案根目錄 */
+    "strict": true,                      /* 啟用嚴格型別檢查（Lab 10 評分重點） */
+    "noImplicitAny": true,               /* 不允許隱含的 any 型別，提升程式碼品質 */
+    "esModuleInterop": true,             /* 允許你用 import 語法順利導入 CommonJS 模組（如 Koa） */
+    "skipLibCheck": true,                
+    "forceConsistentCasingInFileNames": true 
+  },
+  "include": ["**/*.ts"],                /* 包含專案內所有的 TypeScript 檔案 */
+  "exclude": ["node_modules", "dist"]    /* 排除 node_modules，避免編譯到靈魂出竅 */
+}

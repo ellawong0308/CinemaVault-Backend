@@ -1,0 +1,37 @@
+{
+  "name": "cinemavault-backend",
+  "version": "1.0.0",
+  "description": "��#\u0000 \u0000C\u0000i\u0000n\u0000e\u0000m\u0000a\u0000V\u0000a\u0000u\u0000l\u0000t\u0000 \u0000B\u0000a\u0000c\u0000k\u0000e\u0000n\u0000d\u0000\r\u0000 \u0000",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ellawong0308/CinemaVault-Backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ellawong0308/CinemaVault-Backend/issues"
+  },
+  "homepage": "https://github.com/ellawong0308/CinemaVault-Backend#readme",
+  "dependencies": {
+    "koa": "^3.2.1",
+    "koa-bodyparser": "^4.4.1",
+    "koa-json": "^2.0.2",
+    "koa-logger": "^4.0.0",
+    "koa-router": "^14.0.0"
+  },
+  "devDependencies": {
+    "@types/koa": "^3.0.3",
+    "@types/koa-bodyparser": "^4.3.13",
+    "@types/koa-json": "^2.0.24",
+    "@types/koa-logger": "^3.1.5",
+    "@types/koa-router": "^7.4.9",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^6.0.3"
+  }
+}

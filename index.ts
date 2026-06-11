@@ -5,6 +5,7 @@ import json from 'koa-json';
 import logger from 'koa-logger';
 import './database'; // 1. 引入並直接觸發 SQLite 初始化
 import movieRouter from './movies';
+import authRouter from './auth'; // 引入 Auth 路由
 
 const app = new Koa();
 const router = new Router();
@@ -24,6 +25,9 @@ app.use(router.routes()).use(router.allowedMethods());
 
 // 註冊電影路由
 app.use(movieRouter.routes()).use(movieRouter.allowedMethods());
+
+// 註冊認證路由 (/api/v1/auth/register & /api/v1/auth/login)
+app.use(authRouter.routes()).use(authRouter.allowedMethods());
 
 // 404 安全防禦
 app.use(async (ctx, next) => {

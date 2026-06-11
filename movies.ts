@@ -1,14 +1,15 @@
 import Router from 'koa-router';
-import db from './database'; // Import SQLite connection instance
+import db from './database'; 
+import { verifyAdmin } from './authMiddleware'; // 1. 引入剛剛做好的管理員檢查哨
 
 const router = new Router({ prefix: '/api/v1/movies' });
 
 // ==========================================
-// 1. GET: Fetch all movies from database (Read All)
+// 1. GET: Fetch all movies (Public - No lock)
 // ==========================================
 router.get('/', async (ctx, next) => {
     try {
-        const movies = await db('movies').select('*'); // SQL: SELECT * FROM movies;
+        const movies = await db('movies').select('*');
         ctx.body = movies;
     } catch (err) {
         ctx.status = 500;
@@ -18,13 +19,12 @@ router.get('/', async (ctx, next) => {
 });
 
 // ==========================================
-// 2. GET: Fetch a single movie by ID (Read One)
+// 2. GET: Fetch a single movie by ID (Public - No lock)
 // ==========================================
 router.get('/:id', async (ctx, next) => {
     const movieId = parseInt(ctx.params.id);
     try {
-        const movie = await db('movies').where({ id: movieId }).first(); // SQL: SELECT * FROM movies WHERE id = movieId LIMIT 1;
-        
+        const movie = await db('movies').where({ id: movieId }).first();
         if (movie) {
             ctx.body = movie;
         } else {
@@ -39,13 +39,12 @@ router.get('/:id', async (ctx, next) => {
 });
 
 // ==========================================
-// 3. POST: Add a new movie to database (Create)
+// 3. POST: Add a new movie (🔒 Protected - Admin Only)
 // ==========================================
-router.post('/', async (ctx, next) => {
-    // Extract data from the request body
+// 注意：我們在網址後面加入了 verifyAdmin，它會先執行安全檢查，通過才執行後面的 async 函數
+router.post('/', verifyAdmin, async (ctx, next) => {
     const { title, genre, year, director } = ctx.request.body as any;
 
-    // Validation check for required fields
     if (!title || !genre || !year) {
         ctx.status = 400;
         ctx.body = { error: "Bad Request: title, genre, and year are required fields" };
@@ -53,7 +52,6 @@ router.post('/', async (ctx, next) => {
     }
 
     try {
-        // Insert into database, SQLite returns the new ID in an array
         const [newId] = await db('movies').insert({
             title,
             genre,
@@ -61,12 +59,10 @@ router.post('/', async (ctx, next) => {
             director: director || 'Unknown'
         });
 
-        // Fetch the newly created movie record to return to the client
         const newMovie = await db('movies').where({ id: newId }).first();
-        
-        ctx.status = 201; // 201 Created
+        ctx.status = 201; 
         ctx.body = {
-            message: "Movie added successfully",
+            message: "Movie added successfully by Admin",
             data: newMovie
         };
     } catch (err) {
@@ -77,17 +73,16 @@ router.post('/', async (ctx, next) => {
 });
 
 // ==========================================
-// 4. DELETE: Delete a specific movie by ID (Delete)
+// 4. DELETE: Delete a specific movie (🔒 Protected - Admin Only)
 // ==========================================
-router.delete('/:id', async (ctx, next) => {
+router.delete('/:id', verifyAdmin, async (ctx, next) => {
     const movieId = parseInt(ctx.params.id);
 
     try {
-        // Execute delete query, returns the number of affected rows
         const deletedRows = await db('movies').where({ id: movieId }).del();
 
         if (deletedRows > 0) {
-            ctx.body = { message: `Movie with ID ${movieId} deleted successfully` };
+            ctx.body = { message: `Movie with ID ${movieId} deleted successfully by Admin` };
         } else {
             ctx.status = 404;
             ctx.body = { error: "Movie not found, deletion failed" };
@@ -100,14 +95,13 @@ router.delete('/:id', async (ctx, next) => {
 });
 
 // ==========================================
-// 5. PUT: Update a specific movie by ID (Update)
+// 5. PUT: Update a specific movie (🔒 Protected - Admin Only)
 // ==========================================
-router.put('/:id', async (ctx, next) => {
+router.put('/:id', verifyAdmin, async (ctx, next) => {
     const movieId = parseInt(ctx.params.id);
     const { title, genre, year, director } = ctx.request.body as any;
 
     try {
-        // Check if the movie exists first
         const movieExists = await db('movies').where({ id: movieId }).first();
         if (!movieExists) {
             ctx.status = 404;
@@ -115,7 +109,6 @@ router.put('/:id', async (ctx, next) => {
             return;
         }
 
-        // Execute update query, fallback to current data if fields are empty
         await db('movies').where({ id: movieId }).update({
             title: title || movieExists.title,
             genre: genre || movieExists.genre,
@@ -123,11 +116,9 @@ router.put('/:id', async (ctx, next) => {
             director: director || movieExists.director
         });
 
-        // Fetch the updated movie record
         const updatedMovie = await db('movies').where({ id: movieId }).first();
-
         ctx.body = {
-            message: "Movie updated successfully",
+            message: "Movie updated successfully by Admin",
             data: updatedMovie
         };
     } catch (err) {

@@ -3,27 +3,29 @@ import Router from 'koa-router';
 import bodyParser from 'koa-bodyparser';
 import json from 'koa-json';
 import logger from 'koa-logger';
+import './database'; // 1. 引入並直接觸發 SQLite 初始化
 import movieRouter from './movies';
 
 const app = new Koa();
 const router = new Router();
 
-// 載入 Koa 中間件（Middleware）
-app.use(logger());       // 在終端機印出精美的 Request 日誌
-app.use(json());         // 讓 JSON 回傳格式更美觀
-app.use(bodyParser());   // 自動解析前端傳來的 JSON Payload
+app.use(logger());
+app.use(json());
+app.use(bodyParser());
 
-// 建立一個最基礎的根路徑測試
+// 根路由測試
 router.get('/', async (ctx, next) => {
-    ctx.body = { message: "Welcome to CinemaVault API Server！" };
+    ctx.body = { message: "Welcome to CinemaVault API Server！(SQLite archive database is now fully enabled)" };
     await next();
 });
 
-app.use(movieRouter.routes()).use(movieRouter.allowedMethods());
-// 將路由註冊到 Koa 實例中
+// 1. 先註冊根路由 (/)
 app.use(router.routes()).use(router.allowedMethods());
 
-// 設定學校 Lab 指定的 404 安全防禦（必須放在所有路由的最尾端）
+// 註冊電影路由
+app.use(movieRouter.routes()).use(movieRouter.allowedMethods());
+
+// 404 安全防禦
 app.use(async (ctx, next) => {
     await next();
     if (ctx.status === 404) {
@@ -32,9 +34,8 @@ app.use(async (ctx, next) => {
     }
 });
 
-// 啟動伺服器，監聽 10888 連接埠
 const PORT = 10888;
 app.listen(PORT, () => {
-    console.log(`🚀 The CinemaVault server has started successfully.！`);
-    console.log(`🔗 Test local URL: http://localhost:${PORT}`);
+    console.log(`🚀 CinemaVault Started Successfully！`);
+    console.log(`🔗 Test Local URL: http://localhost:${PORT}`);
 });

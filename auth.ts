@@ -3,18 +3,18 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import db from './database';
 import { OAuth2Client } from 'google-auth-library'; // 引入 Google 驗證庫
-import { JWT_SECRET } from './config';
+import { JWT_SECRET } from './config'; // 🌟 統一引入組態設定檔的金鑰
 
 const router = new Router({ prefix: '/api/v1/auth' });
 
-// 🌟 核心安全性設定：請在這裡填入你在 Google API Console 申請到的真實 Client ID
+// 🌟 核心安全性設定：Google API Console 申請到的真實 Client ID
 const GOOGLE_CLIENT_ID = "479961485296-bc9qtqof14lj1jv3soqs07qqbqi46hoi.apps.googleusercontent.com";
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // ==========================================
 // 1. POST: 原生使用者註冊
 // ==========================================
-router.post('/register', async (ctx, next) => {
+router.post('/register', async (ctx) => {
     const { username, password } = ctx.request.body as any;
     if (!username || !password) {
         ctx.status = 400;
@@ -40,13 +40,12 @@ router.post('/register', async (ctx, next) => {
         ctx.status = 500;
         ctx.body = { error: "Database registration error" };
     }
-    await next();
 });
 
 // ==========================================
-// 2. POST: 原生帳密登入 (管理員與普通用戶通用)
+// 2. POST: 原生帳密登入 (🌟 已修正大頭貼回傳持久化)
 // ==========================================
-router.post('/login', async (ctx, next) => {
+router.post('/login', async (ctx) => {
     const { username, password } = ctx.request.body as any;
     if (!username || !password) {
         ctx.status = 400;
@@ -71,22 +70,28 @@ router.post('/login', async (ctx, next) => {
             JWT_SECRET,
             { expiresIn: '2h' }
         );
+        
+        // 🌟 核心修正：將 SQLite 資料庫中的 profile_photo 欄位回傳給前端
         ctx.body = {
             message: "Login successful",
             token: token,
-            user: { id: user.id, username: user.username, role: user.role }
+            user: { 
+                id: user.id, 
+                username: user.username, 
+                role: user.role,
+                profile_photo: user.profile_photo || null // ✨ 讓前端重新登入時能立刻接住頭像路徑
+            }
         };
     } catch (err) {
         ctx.status = 500;
         ctx.body = { error: "Database authentication error" };
     }
-    await next();
 });
 
 // ==========================================
-// 3. 🌟 實用功能 (Useful): Google OAuth 2.0 驗證路由
+// 3. 🌟 實用功能 (Useful): Google OAuth 2.0 驗證路由 (🌟 已修正大頭貼回傳持久化)
 // ==========================================
-router.post('/google-login', async (ctx, next) => {
+router.post('/google-login', async (ctx) => {
     const { idToken } = ctx.request.body as any;
 
     if (!idToken) {
@@ -133,13 +138,15 @@ router.post('/google-login', async (ctx, next) => {
             { expiresIn: '2h' }
         );
 
+        // 🌟 核心修正：Google 登入成功時，也必須打包回傳資料庫中的大頭貼欄位
         ctx.body = {
             message: "Google Login successful",
             token: token,
             user: {
                 id: user.id,
                 username: user.username,
-                role: user.role
+                role: user.role,
+                profile_photo: user.profile_photo || null // ✨ 確保第三方登入用戶的頭像也能完美復活
             }
         };
 
@@ -147,7 +154,6 @@ router.post('/google-login', async (ctx, next) => {
         ctx.status = 401;
         ctx.body = { error: "Google token verification failed" };
     }
-    await next();
 });
 
 export default router;

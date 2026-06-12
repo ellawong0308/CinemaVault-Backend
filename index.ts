@@ -64,5 +64,5 @@ const PORT = 10888;
 app.listen(PORT, () => {
     console.log(`🚀 CinemaVault Started Successfully！`);
     console.log(`🔗 Backend API Server: http://localhost:${PORT}`);
-    console.log(`🎨 Hosted Frontend UI : http://localhost:${PORT}/index.html 🌟`);
+    console.log(`🎨 Hosted Frontend UI : http://localhost:5173 🌟`);
 });

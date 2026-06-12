@@ -10,6 +10,7 @@ import './database';            // 1. 引入並直接觸發 SQLite 初始化
 import movieRouter from './movies';
 import authRouter from './auth';   // 引入 Auth 路由
 import uploadRouter from './upload'; // 引入上傳路由
+import messageRouter from './messages_router'; // 🌟 引入新訊息路由
 
 const app = new Koa();
 
@@ -41,6 +42,9 @@ app.use(movieRouter.routes()).use(movieRouter.allowedMethods());
 
 // C. 註冊認證路由 (/api/v1/auth/...)
 app.use(authRouter.routes()).use(authRouter.allowedMethods());
+
+// 🌟 註冊訊息路由 (/api/v1/messages)
+app.use(messageRouter.routes()).use(messageRouter.allowedMethods());
 
 // D. 註冊上傳路由
 app.use(uploadRouter.routes()).use(uploadRouter.allowedMethods());

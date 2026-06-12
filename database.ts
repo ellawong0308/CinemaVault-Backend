@@ -72,6 +72,21 @@ async function initDatabase() {
         console.log("❤️ SQLite: favorites table created successfully for member system.");
     }
 
+    db.schema.hasTable('messages').then((exists) => {
+        if (!exists) {
+            return db.schema.createTable('messages', (table) => {
+                table.increments('id').primary();
+                table.string('username').notNullable(); // 發送信件的會員
+                table.text('title').notNullable();    // 主旨
+                table.text('content').notNullable();  // 內容
+                table.text('reply').defaultTo(null);  // 管理員的回覆內容（預設為空）
+                table.timestamp('created_at').defaultTo(db.fn.now());
+            }).then(() => {
+                console.log('✉️ SQLite: messages table created successfully for contact system.');
+            });
+        }
+    });
+
     // 提示所有檢查皆已通過
     console.log("📊 SQLite: All tables verified and ready.");
 }

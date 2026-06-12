@@ -9,21 +9,22 @@ import path from 'path';        // 引入 Node.js 內建的路徑處理模組
 import './database';            // 1. 引入並直接觸發 SQLite 初始化
 import movieRouter from './movies';
 import authRouter from './auth';   // 引入 Auth 路由
+import uploadRouter from './upload'; // 引入上傳路由
 
 const app = new Koa();
 
 // 1. 啟用 CORS 跨來源連線
 app.use(cors());
 
-// 2. 基本基礎中間件
+// 2. 基本基礎中間件 (必須最先執行)
 app.use(logger());
 app.use(json());
 app.use(bodyParser());
 
 // 3. 🌟 啟用前端網頁託管 (Static Files Hosting)
-// 直接定位到你的前端專案資料夾路徑
 const frontendPath = "C:\\Users\\User\\OneDrive\\Desktop\\Shape\\Sem 2\\WebAPI\\CinemaVault-Frontend";
 app.use(serve(frontendPath));
+
 
 // 4. 設定後端路由 (APIs Routes)
 const router = new Router();
@@ -40,11 +41,17 @@ app.use(router.routes()).use(router.allowedMethods());
 // 註冊電影路由 (/api/v1/movies)
 app.use(movieRouter.routes()).use(movieRouter.allowedMethods());
 
-// 註冊認證路由 (/api/v1/auth/register & /api/v1/auth/login & /api/v1/auth/google-login)
+// 註冊認證路由 (/api/v1/auth/...)
 app.use(authRouter.routes()).use(authRouter.allowedMethods());
 
-// 5. 🛑 404 安全防禦攔截器 (必須放在最底部)
-// 如果前面的 API 路由沒對到，且前端資料夾也找不到對應的檔案，才會觸發這裡
+// 🌟 核心修正：顯式拆開裝載 uploadRouter，強制 Koa 將其編入核心路由清單中
+app.use(uploadRouter.routes());
+app.use(uploadRouter.allowedMethods());
+
+// 🖼️ 開放伺服器本地的 uploads 資料夾 (死守在所有 API 下方)
+app.use(serve(path.join(__dirname, '../'))); 
+
+// 🛑 404 安全防禦攔截器 (必須放在最最最底部)
 app.use(async (ctx, next) => {
     await next();
     if (ctx.status === 404 && !ctx.body) {

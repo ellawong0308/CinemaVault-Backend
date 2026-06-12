@@ -29,18 +29,28 @@ async function initDatabase() {
         console.log("📊 SQLite: movies table created successfully.");
     }
 
-    // === 2. 新增：建立 users 資料表 ===
+    // === 2. 建立 users 資料表（整合個人頭像欄位）===
     const hasUsersTable = await db.schema.hasTable('users');
     if (!hasUsersTable) {
         await db.schema.createTable('users', (table) => {
             table.increments('id').primary();
-            table.string('username').notNullable().unique(); // 帳號（例如學號或信箱，必須唯一）
+            table.string('username').notNullable().unique(); // 帳號
             table.string('password').notNullable();          // 加密後的密碼
-            table.string('role').defaultTo('user');          // 角色權限：預設普通用戶 'user'，管理員為 'admin'
+            table.string('role').defaultTo('user');          // 角色權限：'user' 或 'admin'
+            table.string('profile_photo').defaultTo('');     // 🌟 核心新增：儲存個人頭像圖片的網址路徑
             table.timestamp('createdAt').defaultTo(db.fn.now());
         });
-        console.log("👥 SQLite: users table created successfully.");
+        console.log("👥 SQLite: users table created successfully with profile_photo.");
     } else {
+        // 💡 安全防護：如果 users 資料表本來就存在，檢查裡面有沒有 profile_photo 欄位
+        const hasPhotoColumn = await db.schema.hasColumn('users', 'profile_photo');
+        if (!hasPhotoColumn) {
+            // 如果舊的資料表沒有這個欄位，立刻動態補上，免去刪除資料庫的麻煩
+            await db.schema.alterTable('users', (table) => {
+                table.string('profile_photo').defaultTo('');
+            });
+            console.log("🔄 SQLite: Successfully added 'profile_photo' column to existing users table.");
+        }
         console.log("📊 SQLite: All tables verified and ready.");
     }
 }

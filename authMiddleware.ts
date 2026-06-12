@@ -1,8 +1,6 @@
 import { Context, Next } from 'koa';
 import jwt from 'jsonwebtoken';
-
-// Must match the secret key used in auth.ts
-const JWT_SECRET = "CinemaVault_Super_Secret_Key_2026";
+import { JWT_SECRET } from './config';
 
 interface JwtPayload {
     id: number;

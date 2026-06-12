@@ -3,10 +3,9 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import db from './database';
 import { OAuth2Client } from 'google-auth-library'; // 引入 Google 驗證庫
+import { JWT_SECRET } from './config';
 
 const router = new Router({ prefix: '/api/v1/auth' });
-
-const JWT_SECRET = "CinemaVault_Super_Secret_Key_2026";
 
 // 🌟 核心安全性設定：請在這裡填入你在 Google API Console 申請到的真實 Client ID
 const GOOGLE_CLIENT_ID = "479961485296-bc9qtqof14lj1jv3soqs07qqbqi46hoi.apps.googleusercontent.com";

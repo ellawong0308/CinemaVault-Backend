@@ -21,12 +21,10 @@ app.use(logger());
 app.use(json());
 app.use(bodyParser());
 
-// 3. 🌟 啟用前端網頁託管 (Static Files Hosting)
-const frontendPath = "C:\\Users\\User\\OneDrive\\Desktop\\Shape\\Sem 2\\WebAPI\\CinemaVault-Frontend";
-app.use(serve(frontendPath));
 
-
-// 4. 設定後端路由 (APIs Routes)
+// ============================================================
+// 3. 🌟 優先權核心修正：將所有「後端 API 路由」推到最上方執行！
+// ============================================================
 const router = new Router();
 
 // 根路由測試
@@ -35,23 +33,34 @@ router.get('/', async (ctx, next) => {
     await next();
 });
 
-// 註冊根路由 (/)
+// A. 註冊根路由 (/)
 app.use(router.routes()).use(router.allowedMethods());
 
-// 註冊電影路由 (/api/v1/movies)
+// B. 註冊電影路由 (/api/v1/movies) -> 這樣 /favorites 才能第一時間被命中！
 app.use(movieRouter.routes()).use(movieRouter.allowedMethods());
 
-// 註冊認證路由 (/api/v1/auth/...)
+// C. 註冊認證路由 (/api/v1/auth/...)
 app.use(authRouter.routes()).use(authRouter.allowedMethods());
 
-// 🌟 核心修正：顯式拆開裝載 uploadRouter，強制 Koa 將其編入核心路由清單中
-app.use(uploadRouter.routes());
-app.use(uploadRouter.allowedMethods());
+// D. 註冊上傳路由
+app.use(uploadRouter.routes()).use(uploadRouter.allowedMethods());
 
-// 🖼️ 開放伺服器本地的 uploads 資料夾 (死守在所有 API 下方)
+
+// ============================================================
+// 4. 🌟 靜態資源託管區 (當路由全部比對不到時，才由這裡接手)
+// ============================================================
+
+// 開放伺服器本地的大頭貼 uploads 資料夾 (例如: http://localhost:10888/uploads/xxx.jpg)
 app.use(serve(path.join(__dirname, '../'))); 
 
-// 🛑 404 安全防禦攔截器 (必須放在最最最底部)
+// 託管舊的前端靜態網頁檔案 (降級防禦線)
+const frontendPath = "C:\\Users\\User\\OneDrive\\Desktop\\Shape\\Sem 2\\WebAPI\\CinemaVault-Frontend";
+app.use(serve(frontendPath));
+
+
+// ============================================================
+// 5. 🛑 404 安全防禦攔截器 (必須放在最最最底部)
+// ============================================================
 app.use(async (ctx, next) => {
     await next();
     if (ctx.status === 404 && !ctx.body) {

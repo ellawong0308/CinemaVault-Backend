@@ -2,9 +2,13 @@ import Router from 'koa-router';
 import db from './database'; 
 import { verifyAdmin } from './authMiddleware'; 
 import jwt from 'jsonwebtoken'; 
-import { JWT_SECRET } from './config'; // 🌟 統一改用 config 引入
+import { JWT_SECRET, OMDB_API_KEY } from './config';
+import axios from 'axios'; // 🚀 記得在後端安裝：npm install axios
 
 const router = new Router({ prefix: '/api/v1/movies' });
+
+// 🌟 免費 OMDb API Key (請確保已至 http://www.omdbapi.com/apikey.aspx 啟用)
+const OMDB_API_KEY = "7747dc1b"; 
 
 // ============================================================
 // 🌟 實用級亮點功能：虛擬社群媒體管理器 (Useful Requirement)
@@ -162,33 +166,72 @@ router.get('/:id', async (ctx) => {
 // ============================================================
 // 5. POST: Add a new movie (🔒 Protected - Admin Only)
 // 網址：POST /api/v1/movies
+// 🌟 升級亮點：整合 OMDb API 自動代理填充海報、演員與簡介
 // ============================================================
 router.post('/', verifyAdmin, async (ctx, next) => {
     const { title, genre, year, director } = ctx.request.body as any;
 
-    if (!title || !genre || !year) {
+    // 基礎防禦：至少需要標題才能去 OMDb 撈資料
+    if (!title) {
         ctx.status = 400;
-        ctx.body = { error: "Bad Request: title, genre, and year are required fields" };
+        ctx.body = { error: "Bad Request: movie title is required" };
         return;
     }
 
+    // 建立 Fallback 預設彈性欄位值
+    let poster: string | null = null;
+    let actors: string = "N/A";
+    let plot: string = "No description available.";
+    let finalGenre: string = genre || "Unknown";
+    let finalYear: number = year ? parseInt(year) : new Date().getFullYear();
+    let finalDirector: string = director || "Unknown";
+
+    // 🚀 安全代理：向第三方 OMDb API 索取真實好萊塢電影中介資料
     try {
-        // 寫入資料庫
+        const omdbResponse = await axios.get(`http://www.omdbapi.com/?t=${encodeURIComponent(title)}&apikey=${OMDB_API_KEY}`, { timeout: 4000 });
+        
+        if (omdbResponse.data && omdbResponse.data.Response === "True") {
+            const oData = omdbResponse.data;
+            
+            // 當 OMDb 存有對應欄位且非空值時，自動補全/覆蓋現有欄位
+            poster = oData.Poster && oData.Poster !== "N/A" ? oData.Poster : null;
+            actors = oData.Actors && oData.Actors !== "N/A" ? oData.Actors : actors;
+            plot = oData.Plot && oData.Plot !== "N/A" ? oData.Plot : plot;
+            
+            // 如果管理員沒給特定資訊，自動用 OMDb 撈到的官方數據補足
+            if (!genre && oData.Genre && oData.Genre !== "N/A") finalGenre = oData.Genre;
+            if (!year && oData.Year && oData.Year !== "N/A") finalYear = parseInt(oData.Year) || finalYear;
+            if (!director && oData.Director && oData.Director !== "N/A") finalDirector = oData.Director;
+            
+            console.log(`🎬 [OMDb Sync Success] Auto-fetched metadata for movie: "${title}"`);
+        } else {
+            console.log(`⚠️ [OMDb Sync Notice] Movie "${title}" not found in OMDb. Using fallback default values.`);
+        }
+    } catch (omdbError) {
+        // 資安與魯棒性防線：若 API 密鑰到期、斷網或超時，自動降級正常執行，不報 500 錯誤
+        console.error("❌ [OMDb Sync Failed] Third-party API error, skipping auto-fetch:", omdbError);
+    }
+
+    try {
+        // 將融合 OMDb 真實資訊後的完整電影物件寫入 SQLite
         const [newId] = await db('movies').insert({
             title,
-            genre,
-            year: parseInt(year),
-            director: director || 'Unknown'
+            genre: finalGenre,
+            year: finalYear,
+            director: finalDirector,
+            poster,  // 🌟 新擴充欄位
+            actors,  // 🌟 新擴充欄位
+            plot     // 🌟 新擴充欄位
         });
 
         const newMovie = await db('movies').where({ id: newId }).first();
 
-        // 🌟 核心功能整合：當新片被建立並判定為 'Live' 時，自動發佈至管理員的社群媒體 feed
-        broadcastNewMovieToSocialMedia(title, parseInt(year), director || 'Unknown');
+        // 🌟 保持核心功能整合：當新片被建立時，自動發佈至管理員的社群媒體 feed
+        broadcastNewMovieToSocialMedia(title, finalYear, finalDirector);
 
         ctx.status = 201; 
         ctx.body = {
-            message: "Movie added successfully by Admin & posted to Social Media Feed!",
+            message: "Movie added successfully with OMDb Proxy Sync & posted to Social Media Feed!",
             data: newMovie
         };
     } catch (err) {

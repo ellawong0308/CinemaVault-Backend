@@ -10,7 +10,7 @@ const db = knex({
 });
 
 async function initDatabase() {
-    // === 1. 原本的 movies 資料表建立邏輯 (保持不變) ===
+    // === 1. 升級後的 movies 資料表建立邏輯 (回歸純粹的骨架定義) ===
     const hasMoviesTable = await db.schema.hasTable('movies');
     if (!hasMoviesTable) {
         await db.schema.createTable('movies', (table) => {
@@ -19,75 +19,79 @@ async function initDatabase() {
             table.string('genre').notNullable();
             table.integer('year').notNullable();
             table.string('director').defaultTo('Unknown');
+            
+            // 🌟 核心擴充欄位定義
+            table.text('poster').defaultTo(null);   
+            table.text('actors').defaultTo('N/A');  
+            table.text('plot').defaultTo('No description available.'); 
+            
             table.timestamp('createdAt').defaultTo(db.fn.now());
         });
-        await db('movies').insert([
-            { title: "Inception (全面啟動)", genre: "Sci-Fi", year: 2010, director: "Christopher Nolan" },
-            { title: "The Dark Knight (黑暗騎士)", genre: "Action", year: 2008, director: "Christopher Nolan" },
-            { title: "Interstellar (星際效應)", genre: "Sci-Fi", year: 2014, director: "Christopher Nolan" }
-        ]);
-        console.log("📊 SQLite: movies table created successfully.");
+        console.log("📊 SQLite: movies table SCHEMA created successfully.");
+    } else {
+        // 💡 安全熱補丁防護
+        const extendedColumns = ['poster', 'actors', 'plot'];
+        for (const col of extendedColumns) {
+            const hasColumn = await db.schema.hasColumn('movies', col);
+            if (!hasColumn) {
+                await db.schema.alterTable('movies', (table) => {
+                    if (col === 'poster') table.text('poster').defaultTo(null);
+                    if (col === 'actors') table.text('actors').defaultTo('N/A');
+                    if (col === 'plot') table.text('plot').defaultTo('No description available.');
+                });
+                console.log(`🔄 SQLite: Successfully patched missing OMDb field '${col}' to existing movies table.`);
+            }
+        }
     }
 
-    // === 2. 建立 users 資料表（整合個人頭像欄位）===
+    // === 2. 建立 users 資料表 ===
     const hasUsersTable = await db.schema.hasTable('users');
     if (!hasUsersTable) {
         await db.schema.createTable('users', (table) => {
             table.increments('id').primary();
-            table.string('username').notNullable().unique(); // 帳號
-            table.string('password').notNullable();          // 加密後的密碼
-            table.string('role').defaultTo('user');          // 角色權限：'user' 或 'admin'
-            table.string('profile_photo').defaultTo('');     // 儲存個人頭像圖片的網址路徑
+            table.string('username').notNullable().unique();
+            table.string('password').notNullable();          
+            table.string('role').defaultTo('user');          
+            table.string('profile_photo').defaultTo('');     
             table.timestamp('createdAt').defaultTo(db.fn.now());
         });
-        console.log("👥 SQLite: users table created successfully with profile_photo.");
+        console.log("👥 SQLite: users table created successfully.");
     } else {
-        // 💡 安全防護：如果 users 資料表本來就存在，檢查裡面有沒有 profile_photo 欄位
         const hasPhotoColumn = await db.schema.hasColumn('users', 'profile_photo');
         if (!hasPhotoColumn) {
             await db.schema.alterTable('users', (table) => {
                 table.string('profile_photo').defaultTo('');
             });
-            console.log("🔄 SQLite: Successfully added 'profile_photo' column to existing users table.");
+            console.log("🔄 SQLite: Added 'profile_photo' column to users.");
         }
     }
 
-    // === 3. 🌟 核心全新建立：最愛電影中間表 (Favorites Table) ===
+    // === 3. 最愛電影中間表 (Favorites Table) ===
     const hasFavoritesTable = await db.schema.hasTable('favorites');
     if (!hasFavoritesTable) {
         await db.schema.createTable('favorites', (table) => {
-            // 記錄是哪個用戶收藏的 (對應 users 表的 username)
             table.string('username').notNullable();
-            
-            // 記錄收藏了哪部電影 (對應 movies 表的 id)
             table.integer('movie_id').notNullable();
-            
-            // 記錄收藏時間
             table.timestamp('createdAt').defaultTo(db.fn.now());
-
-            // 🛑 設定複合主鍵 (Composite Primary Key)
-            // 確保同一個用戶不能重複收藏同一部電影，從資料庫底層鎖死防禦！
             table.primary(['username', 'movie_id']);
         });
-        console.log("❤️ SQLite: favorites table created successfully for member system.");
+        console.log("❤️ SQLite: favorites table created successfully.");
     }
 
-    db.schema.hasTable('messages').then((exists) => {
-        if (!exists) {
-            return db.schema.createTable('messages', (table) => {
-                table.increments('id').primary();
-                table.string('username').notNullable(); // 發送信件的會員
-                table.text('title').notNullable();    // 主旨
-                table.text('content').notNullable();  // 內容
-                table.text('reply').defaultTo(null);  // 管理員的回覆內容（預設為空）
-                table.timestamp('created_at').defaultTo(db.fn.now());
-            }).then(() => {
-                console.log('✉️ SQLite: messages table created successfully for contact system.');
-            });
-        }
-    });
+    // === 4. 建立 messages 客服留言資料表 ===
+    const hasMessagesTable = await db.schema.hasTable('messages');
+    if (!hasMessagesTable) {
+        await db.schema.createTable('messages', (table) => {
+            table.increments('id').primary();
+            table.string('username').notNullable(); 
+            table.text('title').notNullable();    
+            table.text('content').notNullable();  
+            table.text('reply').defaultTo(null);  
+            table.timestamp('created_at').defaultTo(db.fn.now());
+        });
+        console.log('✉️ SQLite: messages table created successfully.');
+    }
 
-    // 提示所有檢查皆已通過
     console.log("📊 SQLite: All tables verified and ready.");
 }
 

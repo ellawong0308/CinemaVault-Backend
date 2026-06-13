@@ -71,15 +71,56 @@ router.get('/social-feed', async (ctx) => {
 });
 
 // ============================================================
-// 1. GET: Fetch all movies (Public)
+// 1. GET: Fetch all movies with Search & Filter (Public)
+// 網址支援：GET /api/v1/movies?title=...&genre=...&year=...&sortBy=...
 // ============================================================
 router.get('/', async (ctx) => {
     try {
-        const movies = await db('movies').select('*');
+        // 從網址後方的 Query Parameters 獲取篩選條件
+        const { title, genre, year, sortBy } = ctx.query as any;
+
+        // 建立一個 Knex 查詢產生器 (Query Builder)
+        let query = db('movies').select('*');
+
+        // 🔍 1. 標題模糊搜尋 (不分大小寫的 Like 查詢)
+        if (title) {
+            // SQLite 預設的 LIKE 是不分大小寫的
+            query = query.where('title', 'like', `%${title}%`);
+        }
+
+        // 🎭 2. 電影類型篩選
+        if (genre) {
+            // 因為從 OMDb 撈回來的類型可能是 "Action, Sci-Fi"，所以用 like 匹配更彈性
+            query = query.where('genre', 'like', `%${genre}%`);
+        }
+
+        // 📅 3. 上映年份篩選
+        if (year) {
+            const parsedYear = parseInt(year);
+            if (!isNaN(parsedYear)) {
+                query = query.where({ year: parsedYear });
+            }
+        }
+
+        // ↕️ 4. 智慧排序功能
+        if (sortBy === 'year_desc') {
+            query = query.orderBy('year', 'desc'); // 年份從新到舊
+        } else if (sortBy === 'year_asc') {
+            query = query.orderBy('year', 'asc');  // 年份從舊到新
+        } else {
+            query = query.orderBy('id', 'desc');    // 預設：最新上架的優先在前方
+        }
+
+        // 執行資料庫查詢
+        const movies = await query;
+
+        // 回傳篩選後的結果
         ctx.body = movies;
+
     } catch (err) {
+        console.error("❌ Failed to query movies with filters:", err);
         ctx.status = 500;
-        ctx.body = { error: "Failed to retrieve movies from database" };
+        ctx.body = { error: "Failed to retrieve filtered movies from database" };
     }
 });
 

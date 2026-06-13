@@ -92,6 +92,30 @@ async function initDatabase() {
         console.log('✉️ SQLite: messages table created successfully.');
     }
 
+    // === 5. 待看清單中間表 (Watchlist Table) ===
+    const hasWatchlistTable = await db.schema.hasTable('watchlist');
+    if (!hasWatchlistTable) {
+        await db.schema.createTable('watchlist', (table) => {
+            table.string('username').notNullable();
+            table.integer('movie_id').notNullable();
+            table.timestamp('createdAt').defaultTo(db.fn.now());
+            table.primary(['username', 'movie_id']);
+        });
+        console.log("⏳ SQLite: watchlist table created successfully.");
+    }
+
+    // === 6. 已看清單中間表 (Watched Table) ===
+    const hasWatchedTable = await db.schema.hasTable('watched');
+    if (!hasWatchedTable) {
+        await db.schema.createTable('watched', (table) => {
+            table.string('username').notNullable();
+            table.integer('movie_id').notNullable();
+            table.timestamp('createdAt').defaultTo(db.fn.now());
+            table.primary(['username', 'movie_id']);
+        });
+        console.log("✅ SQLite: watched table created successfully.");
+    }
+
     console.log("📊 SQLite: All tables verified and ready.");
 }
 

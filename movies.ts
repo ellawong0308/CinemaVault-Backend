@@ -7,9 +7,6 @@ import axios from 'axios'; // 🚀 記得在後端安裝：npm install axios
 
 const router = new Router({ prefix: '/api/v1/movies' });
 
-// 🌟 免費 OMDb API Key (請確保已至 http://www.omdbapi.com/apikey.aspx 啟用)
-const OMDB_API_KEY = "7747dc1b"; 
-
 // ============================================================
 // 🌟 實用級亮點功能：虛擬社群媒體管理器 (Useful Requirement)
 // ============================================================
@@ -175,6 +172,105 @@ router.post('/favorite', localAuthenticateToken, async (ctx) => {
             ctx.body = { message: "Added to favorites! ❤️", isFavorite: true };
         }
     } catch (err) {
+        ctx.status = 500;
+        ctx.body = { error: "Database operation failed" };
+    }
+});
+
+// ============================================================
+// 🌟 全新加入：獲取使用者當前的 Watchlist 與 Watched 清單 ID 陣列 (Private)
+// GET /api/v1/movies/user-lists
+// ============================================================
+router.get('/user-lists', localAuthenticateToken, async (ctx) => {
+    try {
+        const username = ctx.state.user.username; // 根據你系統的 token 結構獲取用戶名
+
+        const watchlist = await db('watchlist').where({ username }).select('movie_id');
+        const watched = await db('watched').where({ username }).select('movie_id');
+
+        ctx.body = {
+            watchlistIds: watchlist.map(item => item.movie_id),
+            watchedIds: watched.map(item => item.movie_id)
+        };
+    } catch (err) {
+        console.error("❌ Failed to fetch user movie lists:", err);
+        ctx.status = 500;
+        ctx.body = { error: "Failed to retrieve tracking lists" };
+    }
+});
+
+// ============================================================
+// 🌟 全新加入：切換 Watchlist 狀態 (Toggle Private)
+// POST /api/v1/movies/watchlist
+// ============================================================
+router.post('/watchlist', localAuthenticateToken, async (ctx) => {
+    try {
+        const username = ctx.state.user.username;
+        const { movieId } = ctx.request.body as { movieId: number };
+
+        if (!movieId) {
+            ctx.status = 400;
+            ctx.body = { error: "Missing movieId" };
+            return;
+        }
+
+        // 檢查是否已在待看清單
+        const exists = await db('watchlist').where({ username, movie_id: movieId }).first();
+
+        if (exists) {
+            await db('watchlist').where({ username, movie_id: movieId }).del();
+            ctx.body = { message: "Removed from watchlist", inWatchlist: false };
+        } else {
+            await db('watchlist').insert({ username, movie_id: movieId });
+            ctx.body = { message: "Added to watchlist", inWatchlist: true };
+        }
+    } catch (err) {
+        console.error("❌ Watchlist toggle error:", err);
+        ctx.status = 500;
+        ctx.body = { error: "Database operation failed" };
+    }
+});
+
+// ============================================================
+// 🌟 全新加入：切換 Watched 狀態 (Toggle Private)
+// POST /api/v1/movies/watched
+// 💡 高級 UX 貼心邏輯：當用戶標記「已看」，系統會自動從「待看」中移除
+// ============================================================
+router.post('/watched', localAuthenticateToken, async (ctx) => {
+    try {
+        const username = ctx.state.user.username;
+        const { movieId } = ctx.request.body as { movieId: number };
+
+        if (!movieId) {
+            ctx.status = 400;
+            ctx.body = { error: "Missing movieId" };
+            return;
+        }
+
+        // 檢查是否已在已看清單
+        const exists = await db('watched').where({ username, movie_id: movieId }).first();
+
+        if (exists) {
+            await db('watched').where({ username, movie_id: movieId }).del();
+            ctx.body = { message: "Removed from watched list", inWatched: false, removedFromWatchlist: false };
+        } else {
+            // 1. 寫入已看清單
+            await db('watched').insert({ username, movie_id: movieId });
+            
+            // 2. 自動檢查並從待看清單中移除（展現極佳的系統聯動邏輯！）
+            const inWatchlist = await db('watchlist').where({ username, movie_id: movieId }).first();
+            if (inWatchlist) {
+                await db('watchlist').where({ username, movie_id: movieId }).del();
+            }
+
+            ctx.body = { 
+                message: "Marked as watched successfully", 
+                inWatched: true, 
+                removedFromWatchlist: !!inWatchlist 
+            };
+        }
+    } catch (err) {
+        console.error("❌ Watched list toggle error:", err);
         ctx.status = 500;
         ctx.body = { error: "Database operation failed" };
     }
